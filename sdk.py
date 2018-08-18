@@ -8,6 +8,16 @@ import json
 hashing = CDLL('./lib/hashing/hashing.so')
 hexutil = CDLL('./lib/hexutil/hexutil.so')
 config = CDLL('./lib/config/config.so')
+stringutil = CDLL('./lib/stringutil/stringutil.so')
+
+class BytesResponse(Structure):
+    _fields_ = [
+        ("r0", c_void_p),
+        ("r1", c_int),
+    ]
+
+stringutil.CompactJSON.restype = BytesResponse
+hexutil.DecodeString.restype = BytesResponse
 
 ErrMethodAlreadyRegistered = Exception("method already registered")
 ErrMethodNotExists = Exception("method does not exist")
@@ -20,33 +30,43 @@ class C3():
         self.q = Queue(maxsize=0)
         self.statefile = statefile
 
-    def registerMethod(self, methodName, types, ifn):
-        methodNameHash = c_char_p(hashing.HashToHexString(methodName).value.decode('utf-8')
+    def registerMethod(self, methodName, ifn):
+        b = bytearray()
+        b.extend(map(ord, methodName))
+        arr = (c_byte * len(b))(*b)
+        
+        methodNameHash = c_char_p(hashing.HashToHexString(arr, len(arr))).value.decode('utf-8')
         if methodNameHash in self.methods:
             raise ErrMethodAlreadyExists
 
-        self.methods[methodNameHash] = lambda ifn, *args:
+        def newMethod(*args):
             if len(args) != 2:
                 raise ErrIncorrectNumberOfArgs
 
             key = args[0]
-            keyBytes = hexutil.DecodeString(keyHex)
-            key = keyBytes.decode('utf-8')
+            res = hexutil.DecodeString(c_char_p(key.encode('utf-8')))
+            ArrayType = c_ubyte*(c_int(res.r1).value)
+            pa = cast(c_void_p(res.r0), POINTER(ArrayType))
+            key = "".join(map(chr, pa.contents[:]))
 
             val = args[1]
-            valBytes = hexutil.DecodeString(valHex)
-            val = valBytes.decode('utf-8')
+            res = hexutil.DecodeString(c_char_p(val.encode('utf-8')))
+            ArrayType = c_ubyte*(c_int(res.r1).value)
+            pa = cast(c_void_p(res.r0), POINTER(ArrayType))
+            val = "".join(map(chr, pa.contents[:]))
 
             try:
                 res = ifn(key, val)
                 print("[c3] result", res)
             except Exception as inst:
                 print("[c3] invokation failed", inst)
+
+        self.methods[methodNameHash] = newMethod
             
     def setInitialState(self):
         currState = ""
 
-        file = open(self.statefile, “r”) 
+        file = open(self.statefile, "r") 
         currState = file.read() 
 
         if len(currState) == 0:
@@ -54,12 +74,14 @@ class C3():
             return
 
         b = bytearray()
-        b.extend(map(ord, t.inp))
+        b.extend(map(ord, currState))
         arr = (c_byte * len(b))(*b)
 
-        res = stringutil.CompactJSON(arr)
+        res = stringutil.CompactJSON(arr, len(arr))
+        ArrayType = c_ubyte*(c_int(res.r1).value)
+        pa = cast(c_void_p(res.r0), POINTER(ArrayType))
 
-        self.state = json.loads(res.decode("utf-8"))
+        self.state = json.loads("".join(map(chr, pa.contents[:])))
         print("initial state loaded")
 
     def process(self, payloadBytes):
@@ -76,11 +98,16 @@ class C3():
         for ifc in payload:
             self.invoke(ifc[0], *ifc[1:])
 
-    def invoke(self, method, params):
-        if method not in self.methods:
+    def invoke(self, methodName, *params):
+        b = bytearray()
+        b.extend(map(ord, methodName))
+        arr = (c_byte * len(b))(*b)
+        
+        methodNameHash = c_char_p(hashing.HashToHexString(arr, len(arr))).value.decode('utf-8')
+        if methodNameHash not in self.methods:
             raise ErrMethodNotExists
 
-        fn = self.methods[method]
+        fn = self.methods[methodNameHash]
         try:
             fn(*params)
         except Exception as inst:
@@ -102,8 +129,7 @@ class C3():
         # worker.setDaemon(True)
         worker.start()
 
-def NewC3():
-    stateFilePath = c_char_p(config.TempContainerStateFilePath()).value
+def NewC3(stateFilePath = c_char_p(config.TempContainerStateFilePath()).value.decode('utf-8')):
     c3 = C3(stateFilePath)
 
     c3.setInitialState()
@@ -125,7 +151,7 @@ class Server():
         server.bind((self.host, self.port))
         server.listen(1)  # max backlog of connections
 
-        print 'Listening on {}:{}'.format(bind_ip, bind_port)
+        print("Listening on {0}:{1}".format(bind_ip, bind_port))
 
 
         def handle_conn(conn):
@@ -140,7 +166,7 @@ class Server():
 
         while True:
             client_sock, address = server.accept()
-            print 'Accepted connection from {}:{}'.format(address[0], address[1])
+            print('Accepted connection from {0}:{1}'.format(address[0], address[1]))
             client_handler = threading.Thread(
                 target=handle_conn,
                 args=(client_sock,)  # note: comment required!
