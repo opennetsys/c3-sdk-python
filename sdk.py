@@ -3,12 +3,23 @@ from queue import Queue
 from threading import Thread
 import socket
 import json
+import os.path
+
+hashing_name = "/lib/hashing.so"
+hexutil_name = "/lib/hexutil.so"
+config_name = "/lib/config.so"
+stringutil_name = "/lib/stringutil.so"
+
+hashing_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hashing_name
+hexutil_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hexutil_name
+config_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + config_name
+stringutil_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + stringutil_name
 
 # note: these files must first be built. see the make file
-hashing = CDLL('./lib/hashing/hashing.so')
-hexutil = CDLL('./lib/hexutil/hexutil.so')
-config = CDLL('./lib/config/config.so')
-stringutil = CDLL('./lib/stringutil/stringutil.so')
+hashing = CDLL(hashing_path)
+hexutil = CDLL(hexutil_path)
+config = CDLL(config_path)
+stringutil = CDLL(stringutil_path)
 
 class BytesResponse(Structure):
     _fields_ = [
