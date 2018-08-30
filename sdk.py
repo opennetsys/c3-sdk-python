@@ -5,10 +5,11 @@ import socket
 import json
 import os.path
 
-hashing_name = "/lib/hashing.so"
-hexutil_name = "/lib/hexutil.so"
-config_name = "/lib/config.so"
-stringutil_name = "/lib/stringutil.so"
+libDir = "lib"
+hashing_name = libDir + os.path.sep + "hashing.so"
+hexutil_name = libDir + os.path.sep + "hexutil.so"
+config_name = libDir + os.path.sep +  "config.so"
+stringutil_name = libDir + os.path.sep + "stringutil.so"
 
 hashing_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hashing_name
 hexutil_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hexutil_name
