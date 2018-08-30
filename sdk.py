@@ -3,12 +3,24 @@ from queue import Queue
 from threading import Thread
 import socket
 import json
+import os.path
+
+libDir = "lib"
+hashing_name = libDir + os.path.sep + "hashing.so"
+hexutil_name = libDir + os.path.sep + "hexutil.so"
+config_name = libDir + os.path.sep +  "config.so"
+stringutil_name = libDir + os.path.sep + "stringutil.so"
+
+hashing_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hashing_name
+hexutil_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + hexutil_name
+config_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + config_name
+stringutil_path = os.path.dirname(os.path.abspath(__file__)) + os.path.sep + stringutil_name
 
 # note: these files must first be built. see the make file
-hashing = CDLL('./lib/hashing/hashing.so')
-hexutil = CDLL('./lib/hexutil/hexutil.so')
-config = CDLL('./lib/config/config.so')
-stringutil = CDLL('./lib/stringutil/stringutil.so')
+hashing = CDLL(hashing_path)
+hexutil = CDLL(hexutil_path)
+config = CDLL(config_path)
+stringutil = CDLL(stringutil_path)
 
 class BytesResponse(Structure):
     _fields_ = [
@@ -119,7 +131,7 @@ class C3():
             self.process(self.q.get())
             q.task_done()
 
-    def serve():
+    def serve(self):
         host = c_char_p(config.ServerHost()).value
         port = c_int(config.ServerPort()).value
 
@@ -146,12 +158,12 @@ class Server():
         self.port = port
         self.q = q
 
-    def run():
+    def run(self):
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind((self.host, self.port))
         server.listen(1)  # max backlog of connections
 
-        print("Listening on {0}:{1}".format(bind_ip, bind_port))
+        print("Listening on {0}:{1}".format(self.host, self.port))
 
 
         def handle_conn(conn):
