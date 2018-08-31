@@ -64,7 +64,7 @@ py-solc==0.6.0
 py2app==0.7.3
 pyasn1==0.1.9
 pycparser==2.17
-pycryptodome==3.4.3
+pycryptodome==3.6.6
 pyethash==0.1.27
 pyfiglet==0.7.5
 Pygments==2.2.0
