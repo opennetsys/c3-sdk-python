@@ -15,5 +15,12 @@ clean:
 		@-find . -type f -name *.so -delete
 
 .PHONY: test
-test:
+test: test/hexutil test/hashutil
+
+.PHONY: test/hexutil
+test/hexutil:
 	@python util/hexutil_test.py
+
+.PHONY: test/hashutil
+test/hashutil:
+	@python util/hashutil_test.py
